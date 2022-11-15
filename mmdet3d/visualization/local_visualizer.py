@@ -619,6 +619,7 @@ class Det3DLocalVisualizer(DetLocalVisualizer):
 
     @master_only
     def show(self,
+             vis_task: str = 'mono_det',
              save_path: Optional[str] = None,
              drawn_img_3d: Optional[np.ndarray] = None,
              drawn_img: Optional[np.ndarray] = None,
@@ -628,6 +629,7 @@ class Det3DLocalVisualizer(DetLocalVisualizer):
         """Show the drawn point cloud/image.
 
         Args:
+            vis-task (str): Visualization task. Defaults to 'mono_det'.
             save_path (str, optional): Path to save open3d visualized results.
                 Default: None.
             drawn_img (np.ndarray, optional): The image to show. If drawn_img

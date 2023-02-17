@@ -245,7 +245,7 @@ class KittiMetric(BaseMetric):
             if name == 'pred_instances' or metric == 'img_bbox':
                 eval_types = ['bbox']
             else:
-                eval_types = ['bbox', 'bev', '3d']
+                eval_types = ['3d']
             ap_result_str, ap_dict_ = kitti_eval(
                 gt_annos, results_dict[name], classes, eval_types=eval_types)
             for ap_type, ap in ap_dict_.items():
@@ -634,7 +634,7 @@ class KittiMetric(BaseMetric):
             limit_range = box_preds.tensor.new_tensor(self.pcd_limit_range)
             valid_pcd_inds = ((box_preds_lidar.center > limit_range[:3]) &
                               (box_preds_lidar.center < limit_range[3:]))
-            valid_inds = valid_cam_inds & valid_pcd_inds.all(-1)
+            valid_inds = valid_pcd_inds.all(-1)
         else:
             valid_inds = valid_cam_inds
 

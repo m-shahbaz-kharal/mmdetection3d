@@ -29,7 +29,7 @@ def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
 
 def clean_data(gt_anno, dt_anno, current_class, difficulty):
     CLASS_NAMES = ['car', 'pedestrian', 'cyclist']
-    MIN_HEIGHT = [40, 25, 25]
+    MAX_DIST = [15, 25, 35]
     MAX_OCCLUSION = [0, 1, 2]
     MAX_TRUNCATION = [0.15, 0.3, 0.5]
     dc_bboxes, ignored_gt, ignored_dt = [], [], []
@@ -38,9 +38,9 @@ def clean_data(gt_anno, dt_anno, current_class, difficulty):
     num_dt = len(dt_anno['name'])
     num_valid_gt = 0
     for i in range(num_gt):
-        bbox = gt_anno['bbox'][i]
+        loc = gt_anno['location'][i]
         gt_name = gt_anno['name'][i].lower()
-        height = bbox[3] - bbox[1]
+        dist = np.linalg.norm(loc)
         valid_class = -1
         if (gt_name == current_cls_name):
             valid_class = 1
@@ -54,7 +54,7 @@ def clean_data(gt_anno, dt_anno, current_class, difficulty):
         ignore = False
         if ((gt_anno['occluded'][i] > MAX_OCCLUSION[difficulty])
                 or (gt_anno['truncated'][i] > MAX_TRUNCATION[difficulty])
-                or (height <= MIN_HEIGHT[difficulty])):
+                or (dist > MAX_DIST[difficulty])):
             ignore = True
         if valid_class == 1 and not ignore:
             ignored_gt.append(0)
@@ -71,8 +71,8 @@ def clean_data(gt_anno, dt_anno, current_class, difficulty):
             valid_class = 1
         else:
             valid_class = -1
-        height = abs(dt_anno['bbox'][i, 3] - dt_anno['bbox'][i, 1])
-        if height < MIN_HEIGHT[difficulty]:
+        dist = np.linalg.norm(dt_anno['location'][i])
+        if dist > MAX_DIST[difficulty]:
             ignored_dt.append(1)
         elif valid_class == 1:
             ignored_dt.append(0)
@@ -154,8 +154,8 @@ def d3_box_overlap_kernel(boxes, qboxes, rinc, criterion=-1):
 
 def d3_box_overlap(boxes, qboxes, criterion=-1):
     from .rotate_iou import rotate_iou_gpu_eval
-    rinc = rotate_iou_gpu_eval(boxes[:, [0, 2, 3, 5, 6]],
-                               qboxes[:, [0, 2, 3, 5, 6]], 2)
+    rinc = rotate_iou_gpu_eval(boxes,
+                               qboxes, 2)
     d3_box_overlap_kernel(boxes, qboxes, rinc, criterion)
     return rinc
 
@@ -176,10 +176,10 @@ def compute_statistics_jit(overlaps,
     det_size = dt_datas.shape[0]
     gt_size = gt_datas.shape[0]
     dt_scores = dt_datas[:, -1]
-    dt_alphas = dt_datas[:, 4]
-    gt_alphas = gt_datas[:, 4]
-    dt_bboxes = dt_datas[:, :4]
-    # gt_bboxes = gt_datas[:, :4]
+    dt_alphas = dt_datas[:, 6]
+    gt_alphas = gt_datas[:, 6]
+    dt_bboxes = dt_datas[:, :6]
+    # gt_bboxes = gt_datas[:, :6]
 
     assigned_detection = [False] * det_size
     ignored_threshold = [False] * det_size
@@ -436,9 +436,9 @@ def _prepare_data(gt_annos, dt_annos, current_class, difficulty):
         dontcares.append(dc_bboxes)
         total_num_valid_gt += num_valid_gt
         gt_datas = np.concatenate(
-            [gt_annos[i]['bbox'], gt_annos[i]['alpha'][..., np.newaxis]], 1)
+            [gt_annos[i]['location'], gt_annos[i]['dimensions'], gt_annos[i]['alpha'][..., np.newaxis]], 1)
         dt_datas = np.concatenate([
-            dt_annos[i]['bbox'], dt_annos[i]['alpha'][..., np.newaxis],
+            dt_annos[i]['location'], dt_annos[i]['dimensions'], dt_annos[i]['alpha'][..., np.newaxis],
             dt_annos[i]['score'][..., np.newaxis]
         ], 1)
         gt_datas_list.append(gt_datas)
@@ -684,7 +684,7 @@ def kitti_eval(gt_annos,
     overlap_0_5 = np.array([[0.7, 0.5, 0.5, 0.7, 0.5],
                             [0.5, 0.25, 0.25, 0.5, 0.25],
                             [0.5, 0.25, 0.25, 0.5, 0.25]])
-    min_overlaps = np.stack([overlap_0_7, overlap_0_5], axis=0)  # [2, 3, 5]
+    min_overlaps = np.zeros_like([overlap_0_5])
     class_to_name = {
         0: 'Car',
         1: 'Pedestrian',
@@ -717,7 +717,7 @@ def kitti_eval(gt_annos,
         if anno['alpha'][0] != -10:
             valid_alpha_gt = True
             break
-    compute_aos = (pred_alpha and valid_alpha_gt)
+    # compute_aos = (pred_alpha and valid_alpha_gt)
     if compute_aos:
         eval_types.append('aos')
 

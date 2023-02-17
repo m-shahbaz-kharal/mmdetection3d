@@ -579,8 +579,8 @@ def kitti_anno_to_label_file(annos, folder):
 
 
 def add_difficulty_to_annos(info):
-    min_height = [40, 25,
-                  25]  # minimum height for evaluated groundtruth/detections
+    max_dist = [15, 25,
+                  35]  # minimum height for evaluated groundtruth/detections
     max_occlusion = [
         0, 1, 2
     ]  # maximum occlusion level of the groundtruth used for evaluation
@@ -589,8 +589,8 @@ def add_difficulty_to_annos(info):
     ]  # maximum truncation level of the groundtruth used for evaluation
     annos = info['annos']
     dims = annos['dimensions']  # lhw format
-    bbox = annos['bbox']
-    height = bbox[:, 3] - bbox[:, 1]
+    loc = annos['location']
+    dist = np.linalg.norm(loc)
     occlusion = annos['occluded']
     truncation = annos['truncated']
     diff = []
@@ -598,12 +598,12 @@ def add_difficulty_to_annos(info):
     moderate_mask = np.ones((len(dims), ), dtype=np.bool)
     hard_mask = np.ones((len(dims), ), dtype=np.bool)
     i = 0
-    for h, o, t in zip(height, occlusion, truncation):
-        if o > max_occlusion[0] or h <= min_height[0] or t > max_trunc[0]:
+    for d, o, t in zip(dist, occlusion, truncation):
+        if o > max_occlusion[0] or d > max_dist[0] or t > max_trunc[0]:
             easy_mask[i] = False
-        if o > max_occlusion[1] or h <= min_height[1] or t > max_trunc[1]:
+        if o > max_occlusion[1] or d > max_dist[1] or t > max_trunc[1]:
             moderate_mask[i] = False
-        if o > max_occlusion[2] or h <= min_height[2] or t > max_trunc[2]:
+        if o > max_occlusion[2] or d > max_dist[2] or t > max_trunc[2]:
             hard_mask[i] = False
         i += 1
     is_easy = easy_mask

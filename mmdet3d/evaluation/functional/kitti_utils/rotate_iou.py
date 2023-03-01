@@ -356,8 +356,8 @@ def rotate_iou_gpu_eval(boxes, query_boxes, criterion=-1, device_id=0):
     Returns:
         np.ndarray: IoU results.
     """
-    boxes = boxes.astype(np.float32)
-    query_boxes = query_boxes.astype(np.float32)
+    boxes = boxes.astype(np.float32)[:,:6]
+    query_boxes = query_boxes.astype(np.float32)[:,:6]
     N = boxes.shape[0]
     K = query_boxes.shape[0]
     iou = np.zeros((N, K), dtype=np.float32)
